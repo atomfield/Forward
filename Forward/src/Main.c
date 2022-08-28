@@ -186,6 +186,8 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 
 	SetWindowResizeCallback(Window, OnWindowResize);
 
+	glEnable(GL_MULTISAMPLE);
+
 	glEnable(GL_DEPTH_TEST);
 
 	glEnable(GL_BLEND);
