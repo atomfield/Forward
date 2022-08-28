@@ -30,6 +30,9 @@
     <ClCompile Include="src\Window.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\StbImage.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\WindowsGL.h">
@@ -51,6 +54,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\LinMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\StbImage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

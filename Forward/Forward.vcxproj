@@ -140,6 +140,7 @@
     <ClCompile Include="src\GL.c" />
     <ClCompile Include="src\Main.c" />
     <ClCompile Include="src\Platform.h" />
+    <ClCompile Include="src\StbImage.c" />
     <ClCompile Include="src\Window.c" />
     <ClCompile Include="src\WindowsGL.c" />
   </ItemGroup>
@@ -148,6 +149,7 @@
     <ClInclude Include="src\glcorearb.h" />
     <ClInclude Include="src\khrplatform.h" />
     <ClInclude Include="src\LinMath.h" />
+    <ClInclude Include="src\StbImage.h" />
     <ClInclude Include="src\wgl.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\WindowsGL.h" />

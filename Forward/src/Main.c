@@ -8,7 +8,34 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+#include "StbImage.h"
+
 #define DEG_TO_RAD (M_PI / 180)
+
+typedef struct tagPICTURE
+{
+	char* Data;
+
+	int Width;
+
+	int Height;
+
+	int Channels;
+} PICTURE;
+
+static PICTURE LoadPicture(const char* Name)
+{
+	PICTURE Picture;
+
+	Picture.Data = stbi_load(Name, &Picture.Width, &Picture.Height, &Picture.Channels, 4);
+
+	return Picture;
+}
+
+static void FreePicture(PICTURE Picture)
+{
+	stbi_image_free(Picture.Data);
+}
 
 static const char* VertexShaderSource =
 	"#version 460 core \n"
@@ -42,9 +69,11 @@ static const char* PixelShaderSource =
 	
 	"layout(location = 0) out vec4 PixelColor; \n"
 
+	"layout(location = 0) uniform sampler2D Texture; \n"
+
 	"void main() \n"
 	"{ \n"
-	"	PixelColor = vec4(VertexTexCoord * 0.5 + 0.5, 0.5, 1.0); \n"
+	"	PixelColor = texture(Texture, VertexTexCoord); \n"
 	"} \n"
 ;
 
@@ -215,6 +244,35 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 
 	glUseProgramStages(Pipeline, GL_FRAGMENT_SHADER_BIT, PixelShader);
 
+	unsigned int Texture0;
+
+	glGenTextures(1, &Texture0);
+
+	glBindTexture(GL_TEXTURE_2D, Texture0);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	PICTURE Picture = LoadPicture("assets/fastfall.jpg");
+
+	GLenum InternalFormat = GL_RGBA;
+	
+	if (Picture.Channels == 3)
+	{
+		InternalFormat == GL_RGB;
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, Picture.Width, Picture.Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Picture.Data);
+	
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	FreePicture(Picture);
+
 	glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
 
 	while (!Closed(Window))
@@ -227,7 +285,7 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 
 		mat4x4_identity(ViewMatrix);
 
-		mat4x4_translate(ViewMatrix, 0.0, 0.0, -3.0);
+		mat4x4_translate(ViewMatrix, 0.0, 0.0, -2.0);
 
 		glBindProgramPipeline(Pipeline);
 
@@ -237,8 +295,12 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 
 		glProgramUniformMatrix4fv(VertexShader, 2, 1, GL_FALSE, ProjectionMatrix);
 
+		glProgramUniform1i(PixelShader, 0, 0);
+
 		glBindVertexArray(VertexArray);
-		
+
+		glBindTextureUnit(0, Texture0);
+
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		
 		glBindVertexArray(0);
