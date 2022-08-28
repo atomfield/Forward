@@ -46,16 +46,21 @@ static const char* VertexShaderSource =
 	"}; \n"
 
 	"layout(location = 0) in vec3 Position;\n"
-	"layout(location = 1) in vec2 TexCoord;\n"
+	"layout(location = 1) in vec3 Normal;\n"
+	"layout(location = 2) in vec2 TexCoord;\n"
 
 	"layout(location = 0) uniform mat4 ModelMatrix; \n"
 	"layout(location = 1) uniform mat4 ViewMatrix; \n"
 	"layout(location = 2) uniform mat4 ProjectionMatrix; \n"
 
-	"layout(location = 0) out vec2 VertexTexCoord; \n"
+	"layout(location = 0) out vec3 VertexNormal; \n"
+	"layout(location = 1) out vec3 VertexPixelPosition; \n"
+	"layout(location = 2) out vec2 VertexTexCoord; \n"
 
 	"void main() \n"
 	"{ \n"
+	"	VertexNormal = mat3(transpose(inverse(ModelMatrix))) * Normal; \n"
+	"	VertexPixelPosition = vec3(ModelMatrix * vec4(Position, 1.0)); \n"
 	"	VertexTexCoord = TexCoord; \n"
 	"	mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix; \n"
 	"	gl_Position = MVP * vec4(Position, 1.0); \n"
@@ -65,15 +70,38 @@ static const char* VertexShaderSource =
 static const char* PixelShaderSource =
 	"#version 460 core \n"
 
-	"layout(location = 0) in vec2 VertexTexCoord; \n"
-	
+	"layout(location = 0) in vec3 VertexNormal; \n"
+	"layout(location = 1) in vec3 VertexPixelPosition; \n"
+	"layout(location = 2) in vec2 VertexTexCoord; \n"
+
 	"layout(location = 0) out vec4 PixelColor; \n"
 
 	"layout(location = 0) uniform sampler2D Texture; \n"
+	"layout(location = 1) uniform vec3		ObjectColor; \n"
+	"layout(location = 2) uniform vec3		LightColor; \n"
+	"layout(location = 3) uniform vec3		LightPosition; \n"
+	"layout(location = 4) uniform vec3		ViewPosition; \n"
 
 	"void main() \n"
 	"{ \n"
-	"	PixelColor = texture(Texture, VertexTexCoord); \n"
+	"	float AmbientStrength = 0.2; \n"
+	"	vec3 Ambient = AmbientStrength * LightColor; \n"
+
+	"	vec3 Norm = normalize(VertexNormal); \n"
+	"	vec3 LightDirection = normalize(LightPosition - VertexPixelPosition); \n"
+
+	"	float DiffuseValue = max(dot(Norm, LightDirection), 0.0); \n"
+	"	vec3 Diffuse = DiffuseValue * LightColor; \n"
+
+	"	vec3 ViewDirection = normalize(ViewPosition - VertexPixelPosition); \n"
+	"	vec3 ReflectDirection = reflect(-LightDirection, Norm); \n"
+
+	"	float SpecularStrength = 1.0; \n"
+	"	float SpecularValue = pow(max(dot(ViewDirection, ReflectDirection), 0.0), 32); \n"
+	"	vec3 Specular = SpecularStrength * SpecularValue * LightColor; \n"
+
+	"	vec3 Result = (Ambient + Diffuse + Specular) * ObjectColor; \n"
+	"	PixelColor = vec4(Result, 1.0) * texture(Texture, VertexTexCoord); \n"
 	"} \n"
 ;
 
@@ -106,11 +134,11 @@ static void OnWindowResize(WINDOW Window, int Width, int Height)
 
 	mat4x4_identity(ProjectionMatrix);
 
-	float Near = 0.1;
+	float Near = 0.1f;
 
-	float Far = 4000.0;
+	float Far = 4000.0f;
 
-	float Top = Near * tan(Fov / 2 * DEG_TO_RAD);
+	float Top = Near * tanf(Fov / 2 * DEG_TO_RAD);
 
 	float Bottom = -Top;
 
@@ -165,47 +193,47 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 
 	static const float Vertices[] =
 	{
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
 
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
 
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
 
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
 
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
 
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
 	};
 	
 	unsigned int VertexBuffer;
@@ -218,19 +246,25 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 
 	glCreateVertexArrays(1, &VertexArray);
 	
-	glVertexArrayVertexBuffer(VertexArray, 0, VertexBuffer, 0, sizeof(float) * 5);
+	glVertexArrayVertexBuffer(VertexArray, 0, VertexBuffer, 0, sizeof(float) * 8);
 	
 	glEnableVertexArrayAttrib(VertexArray, 0);
 
 	glEnableVertexArrayAttrib(VertexArray, 1);
+
+	glEnableVertexArrayAttrib(VertexArray, 2);
 	
 	glVertexArrayAttribFormat(VertexArray, 0, 3, GL_FLOAT, GL_FALSE, 0);
 	
-	glVertexArrayAttribFormat(VertexArray, 1, 2, GL_FLOAT, GL_FALSE, sizeof(float)*3);
+	glVertexArrayAttribFormat(VertexArray, 1, 3, GL_FLOAT, GL_FALSE, sizeof(float)*3);
+
+	glVertexArrayAttribFormat(VertexArray, 2, 2, GL_FLOAT, GL_FALSE, sizeof(float)*6);
 	
 	glVertexArrayAttribBinding(VertexArray, 0, 0);
 
 	glVertexArrayAttribBinding(VertexArray, 1, 0);
+
+	glVertexArrayAttribBinding(VertexArray, 2, 0);
 
 	unsigned int VertexShader = glCreateShaderProgramv(GL_VERTEX_SHADER, 1, &VertexShaderSource);
 	
@@ -264,7 +298,7 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 	
 	if (Picture.Channels == 3)
 	{
-		InternalFormat == GL_RGB;
+		InternalFormat = GL_RGB;
 	}
 
 	glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, Picture.Width, Picture.Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Picture.Data);
@@ -274,6 +308,8 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 	FreePicture(Picture);
 
 	glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
+
+	vec3 CameraPosition = { 0.0, 0.0, -3.0 };
 
 	while (!Closed(Window))
 	{
@@ -285,17 +321,29 @@ int __stdcall Entry (_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 
 		mat4x4_identity(ViewMatrix);
 
-		mat4x4_translate(ViewMatrix, 0.0, 0.0, -2.0);
+		mat4x4_translate(ViewMatrix, CameraPosition[0], CameraPosition[1], CameraPosition[2]);
 
 		glBindProgramPipeline(Pipeline);
 
-		glProgramUniformMatrix4fv(VertexShader, 0, 1, GL_FALSE, ModelMatrix);
-		
-		glProgramUniformMatrix4fv(VertexShader, 1, 1, GL_FALSE, ViewMatrix);
+		// Vertex shader //
 
-		glProgramUniformMatrix4fv(VertexShader, 2, 1, GL_FALSE, ProjectionMatrix);
+		glProgramUniformMatrix4fv(VertexShader, 0, 1, GL_FALSE, (float*)ModelMatrix);
+		
+		glProgramUniformMatrix4fv(VertexShader, 1, 1, GL_FALSE, (float*)ViewMatrix);
+
+		glProgramUniformMatrix4fv(VertexShader, 2, 1, GL_FALSE, (float*)ProjectionMatrix);
+
+		// Pixel shader //
 
 		glProgramUniform1i(PixelShader, 0, 0);
+
+		glProgramUniform3f(PixelShader, 1, 1.0, 1.0, 1.0);
+
+		glProgramUniform3f(PixelShader, 2, 0.9, 0.8, 0.8);
+
+		glProgramUniform3f(PixelShader, 3, 0.0, 0.0, 1.0);
+
+		glProgramUniform3fv(PixelShader, 4, 1, (float*)CameraPosition);
 
 		glBindVertexArray(VertexArray);
 
