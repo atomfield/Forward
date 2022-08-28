@@ -147,6 +147,7 @@
     <ClInclude Include="src\GL.h" />
     <ClInclude Include="src\glcorearb.h" />
     <ClInclude Include="src\khrplatform.h" />
+    <ClInclude Include="src\LinMath.h" />
     <ClInclude Include="src\wgl.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\WindowsGL.h" />

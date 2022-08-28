@@ -16,6 +16,8 @@ struct tagWINDOW
 	HGLRC RenderingContext;
 
 	BOOL Closed;
+
+	ONWINDOWRESIZE OnResize;
 };
 
 static HGLRC SetupRenderingContext(_In_ HDC DeviceContext)
@@ -86,6 +88,26 @@ static LRESULT __stdcall WindowCallback(_In_ HWND Window, _In_ UINT Message, _In
 		return(0);
 	}
 
+	else if (Message == WM_SIZE)
+	{
+		WINDOW View = GET_WINDOW_VIEW(Window);
+		
+		if (View->OnResize)
+		{
+			RECT WindowRect;
+
+			GetClientRect(View->Window, &WindowRect);
+
+			int Width = WindowRect.right - WindowRect.left;
+
+			int Height = WindowRect.bottom - WindowRect.top;
+
+			View->OnResize(View, Width, Height);
+		}
+
+		return(0);
+	}
+
 	else if (Message == WM_DESTROY)
 	{
 		WINDOW View = GET_WINDOW_VIEW(Window);
@@ -109,7 +131,7 @@ int NewWindow(WINDOWCONFIG* Config, WINDOW* Window)
 {
 	int ErrorCode = ERROR_SUCCESS;
 
-	*Window = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*Window));
+	*Window = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(**Window));
 
 	WINDOW View = *Window;
 
@@ -155,6 +177,21 @@ Error:
 void MakeCurrent(WINDOW Window)
 {
 	wglMakeCurrent(Window->DeviceContext, Window->RenderingContext);
+}
+
+void SetWindowResizeCallback(WINDOW Window, ONWINDOWRESIZE Callback)
+{
+	Window->OnResize = Callback;
+
+	RECT WindowRect;
+
+	GetClientRect(Window->Window, &WindowRect);
+
+	int Width = WindowRect.right - WindowRect.left;
+
+	int Height = WindowRect.bottom - WindowRect.top;
+
+	Window->OnResize(Window, Width, Height);
 }
 
 BOOL Closed(WINDOW Window)
